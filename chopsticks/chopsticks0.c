@@ -27,6 +27,7 @@ pthread_cond_t  CV[NTHREADS];    /* one per philosopher */
 pthread_mutex_t M;               /* mutual exclusion for the monitor */
 int             state[NTHREADS]; /* state of each philosopher */
 
+
 /* internal functions */
 
 int 
