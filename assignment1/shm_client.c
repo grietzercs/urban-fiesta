@@ -19,6 +19,7 @@ main()
     int shmid;
     key_t key;
     char *shm, *s;
+    char test[] = "x";
 
     /*
      * We need to get the segment named
@@ -43,12 +44,14 @@ main()
         perror("shmat");
         exit(1);
     }
+    
 
     /*
      * Now read what the server put in the memory.
      */
     for( s = shm; *s != (char) NULL; s++ )
         putchar(*s);
+        printf("%s", test);
     putchar('\n');
 
     /*

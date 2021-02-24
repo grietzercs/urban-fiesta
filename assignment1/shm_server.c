@@ -28,8 +28,10 @@ main()
 {
     char c;
     int shmid;
+    int shmid2;
     key_t key;
     char *shm, *s;
+    int *x;
 
     /*
      * We'll name our shared memory segment
@@ -47,6 +49,8 @@ main()
         perror("shmget");
         exit(1);
     }
+    
+    
 
     /*
      * Now we attach the segment to our data space.
@@ -56,6 +60,8 @@ main()
         perror("shmat");
         exit(1);
     }
+
+    
 
     /*
      * Now put some things into the memory for the
@@ -75,6 +81,8 @@ main()
      */
     while( *shm != '*' )
         sleep(1);
+
+    shm 
 
     return 0;
 }
