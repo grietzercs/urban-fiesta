@@ -1,0 +1,5 @@
+Review the programs (spock.c and kirk.c).
+Answer (or discuss) questions listed below:
+a) Discuss and evaluate what happens when you're running both in separate windows and you kill one or the other.
+b) Discuss what happens (and why) when you run two copies of kirk.
+c) Discuss what happens (and why) when your run two copies of spock.
