@@ -1,5 +1,11 @@
 Review the programs (spock.c and kirk.c).
 Answer (or discuss) questions listed below:
 a) Discuss and evaluate what happens when you're running both in separate windows and you kill one or the other.
+	Spock cannot run without kirk because there is no message queue created for msgget() to work, prompting an error. 
+	Running kirk alone works as expected, however kirk still will not work because the message queue (mailbox) was closed when the program finishes.
+	
 b) Discuss what happens (and why) when you run two copies of kirk.
+	When running two copies of kirk the programs work as expected and single spock instace will receive the information correctly. This is because ftok() creates a specific token based on the file provided that is the same for all programs using that file.
+	
 c) Discuss what happens (and why) when your run two copies of spock.
+	Whne running two copies of spock the messages in the queue are split in between the two. This is due to both processes pulling from the message queue buffer at the same time. These two processes cannot pull the same item.
