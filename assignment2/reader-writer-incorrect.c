@@ -28,8 +28,6 @@ void *writer(void *wno)
 void *reader(void *rno)
 {   
     semWait(&countSem);
-    sem_getvalue(&countSem.B1, &semValue);
-    printf("countSem_wait value: %d\n", semValue);
     
     // Reader acquire the lock before modifying numreader
     pthread_mutex_lock(&mutex);
@@ -45,8 +43,6 @@ void *reader(void *rno)
     printf("Reader %d completed: read cnt as %d\n",*((int *)rno),cnt);
 
     semPost(&countSem);
-    sem_getvalue(&countSem.B1, &semValue);
-    printf("countSem_post value: %d\n", semValue);
 
     // Reader acquire the lock before modifying numreader
     pthread_mutex_lock(&mutex);

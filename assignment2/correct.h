@@ -27,10 +27,9 @@ void semWait(struct CS *givenSem) {
 }
 
 void semPost(struct CS *givenSem) {
-    printf("Reached point");
+
     sem_wait(&givenSem->B2);
     givenSem->val += 1;
-    printf("Val: %d\n", givenSem->val);
     if (givenSem->val = 1) {
         sem_post(&givenSem->B1);
     }
