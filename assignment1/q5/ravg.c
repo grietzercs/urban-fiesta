@@ -14,15 +14,25 @@ void averageprog_1( char* host, int argc, char *argv[] )
    char 	*endptr;
    input_data  average_1_arg; /* input_data rpc struct */
 
+   char *givenArg;
+
+   givenArg = argv[2];
+   if (strcmp(givenArg, "-a") == 0) {
+      printf("You've chosen ascending order: %s\n", givenArg);
+   }
+   else if (strcmp(givenArg, "-d") == 0) {
+      printf("You've chosen descending order: %s\n", givenArg);
+   }
+
    average_1_arg.input_data.input_data_val = (double*) malloc(MAXAVGSIZE*sizeof(double));
 
    /* pointer to double, beginning of input data */
    dp = average_1_arg.input_data.input_data_val;
    
    /* set number of items */
-   average_1_arg.input_data.input_data_len = argc - 2;
+   average_1_arg.input_data.input_data_len = argc - 3;
 
-   for( i = 1; i <= (argc - 2); i++ )
+   for( i = 2; i <= (argc - 3); i++ )
    {
 	/* str to d ASCII string to floating point nubmer */
  	f = strtod( argv[i+1], &endptr);
@@ -70,16 +80,18 @@ void averageprog_1( char* host, int argc, char *argv[] )
     *  than calls the remote routine associated with the client handle
     * so AVERAGEPROG, VERSION 
     */
-   result_1 = average_1( &average_1_arg, clnt );
+   // result_1 = average_1( &average_1_arg, clnt );
 
-   if (result_1 == NULL) 
-      {
-      clnt_perror(clnt, "call failed:");
-      }
+   // if (result_1 == NULL) 
+   //    {
+   //    clnt_perror(clnt, "call failed:");
+   //    }
 
-   clnt_destroy( clnt );
+   // clnt_destroy( clnt );
 
-   printf( "median = %e\n",*result_1 );
+   // printf( "median = %e\n",*result_1 );
+
+   
 }
 
 
