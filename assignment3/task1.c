@@ -2,13 +2,31 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <correct.h>
  
 #define SIZE 5
 #define NUMB_THREADS 6
-#define PRODUCER_LOOPS 2
+#define PRODUCER_LOOPS 2 //should be random in task
 
-/*  Sub-task 1: Make prod_con.c work with shared memory (of variables) and given processes 
+/*      
+    Tasl 1:
+        Three shared memories for the following variables
+            Global array, empty_sem, full_sem, and buffer mutex
+        Sub-task 1: Make prod_con.c work with shared memory (of variables) and given processes 
+            - You can use queue instead of a linked list. Any data structure can be used,
+            linked lists are just the most efficient
+            - All counting semaphore implementations must use the custom semaphore
+            implementations from assignment 2, except for binary semaphores. Those can use
+            sem_open 
     Sub-task 2: [Pending](?)
+    Task 3: Signal handling and termination
+        - Graceful termination 
+            Processes and Threads are killed
+            Deallocate shared memory
+            Destroying semaphores
+        - Calling exit(0)
+        - What to do
+            Make global var (boolean killflag)
 */
  
 typedef int buffer_t; //buffer will now contain node structs and not ints
@@ -18,8 +36,8 @@ int numThreads;
 int numProc;
  
 pthread_mutex_t buffer_mutex; //must be in shared memory as well
-sem_t full_sem;  //must be in shared memory
-sem_t empty_sem; //must be in shared memory
+sem_t full_sem;  //must be in shared memory, this will be a struct of three elements from ass2
+sem_t empty_sem; //must be in shared memory, this will be a struct of three elements from ass2
 
 //contains processes as well
 struct Node {
@@ -55,7 +73,7 @@ void *producer(void *thread_n) {
     buffer_t value;
     int i=0;
     int semvalue;
-    while (i++ < PRODUCER_LOOPS) {
+    while (i++ < PRODUCER_LOOPS) { //edit this to: "&& (!killflag)" to check for signal signaling
         sleep(rand() % 10);
         value = rand() % 100;
         sem_wait(&full_sem); 
@@ -88,6 +106,11 @@ void *producer(void *thread_n) {
         printf("Producer %d after empty_sem value: %d\n", thread_numb, semvalue);
         printf("Producer %d added %d to buffer\n", thread_numb, value);
     }
+    /* add exit(0) for producer process termination from signal handling
+        could also run SIGKILL(PID) for the child
+
+        For thread cancelling look at thread_cancel1.c in self-study
+    */
     pthread_exit(0);
 }
  
@@ -96,6 +119,9 @@ void *consumer(void *thread_n) {
     buffer_t value;
     int i=0;
     int semvalue;
+    /*
+        While loop will be changed to: while(true) to run infinitely
+    */
     while (i++ < PRODUCER_LOOPS) {
         sem_wait(&empty_sem);
         sem_getvalue(&empty_sem, &semvalue);
