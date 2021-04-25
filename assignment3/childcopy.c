@@ -12,7 +12,11 @@
 #include <sys/stat.h>
 #include "correct.h"
 
-#define FULLSEM "/mysem"
+#define SIZE 5
+
+/*
+    Shared memory semaphores
+*/
 
 int genRand() {
     int upper = 25; int lower = 0;
@@ -20,15 +24,8 @@ int genRand() {
 }
 
 int main() {
-    struct CS fs, es;
-    for(int i=0; i<10; i++) {
-        printf("randNum: %d\n", genRand());
-    }
+    countSem *fs, *es;
     
-    semInit(&es, 0);
-    semInit(&fs, genRand());
-    
-    sem_t *sharedSem = sem_open(FULLSEM, O_CREAT, 0644, 1);
     pid_t child1 = fork();
     
     if (child1 == 0) {
@@ -42,21 +39,23 @@ int main() {
         int shmStrID = shmget(7999, 1024, 0666 | IPC_CREAT);
         int shmIntID = shmget(9999, 1024, 0666 | IPC_CREAT);
 
+        int testID = shmget(8999, sizeof(fs), 066 | IPC_CREAT);
+        fs = (countSem*)shmat(testID, NULL, 0);
+
+        semInit(fs, SIZE);
+        sem_getvalue(&fs->B2, &semvalue);
+        printf("Sem value: %d\n", semvalue);
+
         int *sharedInt = (int *) shmat(shmIntID, NULL, 0);
         char *sharedStr = (char *) shmat(shmStrID, NULL, 0);
 
-        sem_t *sem = sem_open(FULLSEM, 0);
-        printf("Has not reached error");
-        sem_getvalue(&sem, semvalue);
-        printf("sem value before wait: %d\n", &semvalue);
+        // printf("Has not reached error");
+        // sem_getvalue(&sem, semvalue);
+        // printf("sem value before wait: %d\n", &semvalue);
 
-        sem_wait(sem);
-        sem_getvalue(&sem, &semvalue);
-        printf("sem value after wait: %d\n", semvalue);
-
-        while(*sharedInt != 1) {
-            sleep(1);
-        }
+        // while(*sharedInt != 1) { //previous code
+        //     sleep(1);
+        // }
 
         usleep(100);
         strcpy(sharedStr, "shared");
@@ -64,10 +63,13 @@ int main() {
 
         *sharedInt = 2;
         usleep(100);
+        printf("Child 1 value of sharedInt: %d\n", *sharedInt);
 
         printf("Child1 is writing: %s\n", sharedStr); sleep(1);
 
-        shmdt(sharedInt); shmdt(sharedStr);
+        shmdt(sharedInt); shmdt(sharedStr); shmdt(fs);
+
+        printf("Child 1 closed shared memory segments and unlinked semaphore\n");
         
         exit(0);
     }
@@ -107,12 +109,10 @@ int main() {
         int shmStrID = shmget(7999, 1024, 0666 | IPC_CREAT);
         int shmIntID = shmget(9999, 1024, 0666 | IPC_CREAT);
 
-        sem_t *sharedSem = sem_open(SEMNAME, O_CREAT, 0644, 5);
-
         // if (sharedSem == SEM_FAILED) {
         //     printf("Failed to create semaphore");
         // }
-        
+
         //attaches string to the shared memory
         int *sharedInt = (int *) shmat(shmIntID, NULL, 0);
         char *sharedStr = (char *) shmat(shmStrID, NULL, 0);

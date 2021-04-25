@@ -23,23 +23,38 @@ sem_t full_sem;  /* when 0, buffer is full */
 sem_t empty_sem; /* when 0, buffer is empty. Kind of
                     like an index for the buffer */
  
-struct CS fs, es;
+countSem *fs, *es;
 
 struct Node {
-   char* printData;
-   struct node *next;
+   int printData;
+   struct Node* next;
    int procID;
 };
 
-void addtoList(struct Node *current, struct Node*head) {
-    struct Node *temp = (struct Node*) malloc(sizeof(struct Node));
-    temp = head;
-    current->next = temp;
-    head = current;
+void addtoList(struct Node* head_ref, struct Node* newNode) {
+    struct Node* temp = (struct Node*) malloc(sizeof(struct Node));
+    struct Node *last = head_ref;
+    newNode->next = NULL;
+    if (head_ref == NULL) {
+        head_ref = newNode;
+        return;
+    }
+    while(last->next != NULL) {
+        last = last->next;
+    }
+    last->next = newNode;
+    return;
 }
 
-int lengthList(struct Node *head) {
-    struct Node *current = (struct Node*) malloc(sizeof(struct Node));
+int lengthList(struct Node* head) {
+    int count;
+    struct Node* current = (struct Node*) malloc(sizeof(struct Node));
+    current = head;
+    while(current != NULL) {
+        count++;
+        current = current->next;
+    }
+    return count;
 }
  
 void insertbuffer(buffer_t value) {
@@ -72,13 +87,13 @@ void *producer(void *thread_n) {
     while (i++ < PRODUCER_LOOPS) {
         sleep(rand() % 10);
         value = rand() % 100;
-        semWait(&fs);  //sem_wait(&full_sem);
+        semWait(fs);  //sem_wait(&full_sem);
 
         pthread_mutex_lock(&buffer_mutex); /* protecting critical section */
         insertbuffer(value);
         pthread_mutex_unlock(&buffer_mutex);
 
-        semPost(&es);  //sem_post(&empty_sem);
+        semPost(es);  //sem_post(&empty_sem);
         printf("Producer %d added %d to buffer\n", thread_numb, value);
     }
     pthread_exit(0);
@@ -89,13 +104,13 @@ void *consumer(void *thread_n) {
     buffer_t value;
     int i=0;
     while (i++ < PRODUCER_LOOPS) {
-        semWait(&es);  //sem_wait(&empty_sem);
+        semWait(es);  //sem_wait(&empty_sem);
         /* there could be race condition here, that could cause
            buffer underflow error */
         pthread_mutex_lock(&buffer_mutex);
         value = dequeuebuffer(value);
         pthread_mutex_unlock(&buffer_mutex);
-        semPost(&fs);  //sem_post(&full_sem);
+        semPost(fs);  //sem_post(&full_sem);
         printf("Consumer %d dequeue %d from buffer\n", thread_numb, value);
    }
     pthread_exit(0);
@@ -103,26 +118,36 @@ void *consumer(void *thread_n) {
  
 int main(int argc, int **argv) {
     buffer_index = 0;
-    struct Node *head = (struct Node*) malloc(sizeof(struct Node));
-    struct Node *current = (struct Node*) malloc(sizeof(struct Node));
-    head->next = current;
+    struct Node* head = (struct Node*) malloc(sizeof(struct Node));
+    struct Node* current = (struct Node*) malloc(sizeof(struct Node));
+    current = head;
     current->printData = genRand();
+    current->next = NULL;
     
     for (int i=0; i<10; i++) {
-        struct Node *node = (struct Node*) malloc(sizeof(struct Node));
+        struct Node* node = (struct Node*) malloc(sizeof(struct Node));
         node->printData = i;
-        addtoList(node, head);
+        addtoList(head, node);
     }
 
+    int count = lengthList(head); 
+    int i = 0;
+
+    struct Node* iterate = (struct Node*) malloc(sizeof(struct Node));
+    iterate = head;
+    while (iterate != NULL) {
+        printf("Node %d Data: %d\n", i, iterate->printData);
+        i++;
+        iterate = iterate->next;
+    }
     
- 
+    printf("Reached this point.");
     pthread_mutex_init(&buffer_mutex, NULL);
-    semInit(&fs, SIZE);
-    semInit(&es, 0);  //sem_init(&empty_sem
+    //semInit(fs, SIZE);
+    //semInit(es, 0);  //sem_init(&empty_sem)
 
     pthread_t thread[NUMB_THREADS];
     int thread_numb[NUMB_THREADS];
-    int i;
     for (i = 0; i < NUMB_THREADS; ) {
         thread_numb[i] = i;
         pthread_create(thread + i, // pthread_t *t
@@ -145,6 +170,7 @@ int main(int argc, int **argv) {
     pthread_mutex_destroy(&buffer_mutex);
     sem_destroy(&full_sem);
     sem_destroy(&empty_sem);
+    //sem_destroy(&fs->B1); sem_destroy(&fs->B2);
  
     return 0;
 }

@@ -1,10 +1,10 @@
 int mutexValue, waitValue;
 
-struct CS {
+typedef struct CS {
     int val;
     sem_t B1; //semaphore
     sem_t B2; //mutex
-};
+}countSem;
 
 //The mutex in the pdf is considered binary sem, which should be treated as mutex
 void semWait(struct CS *givenSem) {
