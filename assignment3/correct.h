@@ -30,7 +30,7 @@ void semPost(struct CS *givenSem) {
 
     sem_wait(&givenSem->B2);
     givenSem->val += 1;
-    if (givenSem->val = 1) {
+    if (givenSem->val == 1) {
         sem_post(&givenSem->B1);
     }
     sem_post(&givenSem->B2);

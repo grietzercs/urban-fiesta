@@ -23,17 +23,18 @@ sem_t full_sem;  /* when 0, buffer is full */
 sem_t empty_sem; /* when 0, buffer is empty. Kind of
                     like an index for the buffer */
  
-countSem *fs, *es;
+countSem *fs;
+countSem *es;
 
-struct Node {
+typedef struct node {
    int printData;
-   struct Node* next;
+   struct node* next;
    int procID;
-};
+} Node;
 
-void addtoList(struct Node* head_ref, struct Node* newNode) {
-    struct Node* temp = (struct Node*) malloc(sizeof(struct Node));
-    struct Node *last = head_ref;
+void addtoList(Node* head_ref, Node* newNode) {
+    Node* temp = (Node*) malloc(sizeof(Node));
+    Node *last = head_ref;
     newNode->next = NULL;
     if (head_ref == NULL) {
         head_ref = newNode;
@@ -46,9 +47,9 @@ void addtoList(struct Node* head_ref, struct Node* newNode) {
     return;
 }
 
-int lengthList(struct Node* head) {
+int lengthList(Node* head) {
     int count;
-    struct Node* current = (struct Node*) malloc(sizeof(struct Node));
+    Node* current = (Node*) malloc(sizeof(Node));
     current = head;
     while(current != NULL) {
         count++;
@@ -118,14 +119,14 @@ void *consumer(void *thread_n) {
  
 int main(int argc, int **argv) {
     buffer_index = 0;
-    struct Node* head = (struct Node*) malloc(sizeof(struct Node));
-    struct Node* current = (struct Node*) malloc(sizeof(struct Node));
+    Node* head = (Node*) malloc(sizeof(Node));
+    Node* current = (Node*) malloc(sizeof(Node));
     current = head;
     current->printData = genRand();
     current->next = NULL;
     
     for (int i=0; i<10; i++) {
-        struct Node* node = (struct Node*) malloc(sizeof(struct Node));
+        Node* node = (Node*) malloc(sizeof(Node));
         node->printData = i;
         addtoList(head, node);
     }
@@ -133,7 +134,7 @@ int main(int argc, int **argv) {
     int count = lengthList(head); 
     int i = 0;
 
-    struct Node* iterate = (struct Node*) malloc(sizeof(struct Node));
+    Node* iterate = (Node*) malloc(sizeof(Node));
     iterate = head;
     while (iterate != NULL) {
         printf("Node %d Data: %d\n", i, iterate->printData);
