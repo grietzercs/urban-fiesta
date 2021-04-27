@@ -19,6 +19,24 @@
 #define NUMB_THREADS 6
 #define PRODUCER_LOOPS 2
 
+typedef struct {
+    int val;
+    sem_t gate;
+    sem_t mutex;
+} countSem;
+
+typedef struct node {
+   int printData;
+   struct node* next;
+   int procID;
+} Node;
+
+//The global buffer struct
+typedef struct {
+    int filesize, childId, free, reading;
+    sem_t lock;
+} buildingBlock;
+
 int dataSize, numProducers, numConsumers, totalJobsDone;
 
 //starting clock
@@ -35,33 +53,15 @@ int shmid, shmid1, shmid2, shmid3, shmid4, shmid5, shmid6, shmid7;
 //Pid of all children
 pid_t allChildren;
 
-//The global buffer struct
-typedef struct {
-    int filesize, childId, free, reading;
-    sem_t lock;
-} buildingBlock;
-
 buildingBlock *globalBuffer;
  
 typedef int buffer_t;
 buffer_t buffer[SIZE];
 int buffer_index;
 
-typedef struct node {
-   int printData;
-   struct node* next;
-   int procID;
-} Node;
-
 countSem *full_sem, *empty_sem, *fs, *es;
  
-pthread_mutex_t buffer_mutex;
-
-typedef struct {
-    int val;
-    sem_t gate;
-    sem_t mutex;
-} countSem;
+pthread_mutex_t *buffer_mutex;
 
 void myPost(countSem *cSem) {
     sem_wait(&cSem->mutex);
@@ -72,7 +72,23 @@ void myPost(countSem *cSem) {
 }
 
 void myWait(countSem *cSem) {
-    
+    sem_wait(&cSem->gate);
+    sem_wait(&cSem->mutex);
+    cSem->val -= 1;
+    if (cSem->val > 0) {
+        sem_post(&cSem->gate);
+    }
+    sem_post(&cSem->mutex);
+}
+
+void initSem (countSem *cSem, int k) { 
+    cSem->val = k;
+    if (cSem->val > 0) {
+        sem_init(&cSem->gate, 1, 1);
+    } else {
+        sem_init(&cSem->gate, 1, 0);
+    }
+    sem_init(&cSem->mutex, 1, 1);
 }
 
 /* InsertBuffer (int datasize = file database), (int id = childID),
@@ -187,11 +203,11 @@ void producer(int numJobs, int childID) {
         printf("Producer %d added %d to buffer\n", childID, dataSize);
 
         *writePtr = (*writePtr + 1) % 30;
-        semPost(empty_sem);
+        myPost(empty_sem);
         
         int mysleep = (rand() % 10);
         sleep(mysleep/10.0);
-        i++
+        i++;
     }
     exit(0);
 }
@@ -199,44 +215,53 @@ void producer(int numJobs, int childID) {
 //replacement consumer function
 void *consumerThread(void *cthread_n) {
     int thread_numb = *(int *) cthread_n;
-
-}
- 
-void *producer(void *thread_n) {
-    int thread_numb = *(int *)thread_n;
-    buffer_t value;
-    int i=0;
-    while (i++ < PRODUCER_LOOPS) {
-        sleep(rand() % 10);
-        value = rand() % 100;
-        semWait(fs);  //sem_wait(&full_sem);
-
-        pthread_mutex_lock(&buffer_mutex); /* protecting critical section */
-        insertbuffer(value);
-        pthread_mutex_unlock(&buffer_mutex);
-
-        semPost(es);  //sem_post(&empty_sem);
-        printf("Producer %d added %d to buffer\n", thread_numb, value);
+    buildingBlock temp;
+    while(1) {
+        myWait(empty_sem);
+        temp = dequeuebuffer(*readPtr);
+        *readPtr = (*readPtr+1) % 30;
+        myPost(full_sem);
+        sleep(temp.filesize/200);
+        totalJobsDone++;
+        printf("Consumer %d dequeue %d, %d from buffer. Total jobs done = %d\n", thread_numb, temp.childId, temp.filesize, totalJobsdone);
     }
-    pthread_exit(0);
 }
  
-void *consumer(void *thread_n) {
-    int thread_numb = *(int *)thread_n;
-    buffer_t value;
-    int i=0;
-    while (i++ < PRODUCER_LOOPS) {
-        semWait(es);  //sem_wait(&empty_sem);
-        /* there could be race condition here, that could cause
-           buffer underflow error */
-        pthread_mutex_lock(&buffer_mutex);
-        value = dequeuebuffer(value);
-        pthread_mutex_unlock(&buffer_mutex);
-        semPost(fs);  //sem_post(&full_sem);
-        printf("Consumer %d dequeue %d from buffer\n", thread_numb, value);
-   }
-    pthread_exit(0);
-}
+// void *producer(void *thread_n) {
+//     int thread_numb = *(int *)thread_n;
+//     buffer_t value;
+//     int i=0;
+//     while (i++ < PRODUCER_LOOPS) {
+//         sleep(rand() % 10);
+//         value = rand() % 100;
+//         semWait(fs);  //sem_wait(&full_sem);
+
+//         pthread_mutex_lock(&buffer_mutex); /* protecting critical section */
+//         insertbuffer(value);
+//         pthread_mutex_unlock(&buffer_mutex);
+
+//         myPost(es);  //sem_post(&empty_sem);
+//         printf("Producer %d added %d to buffer\n", thread_numb, value);
+//     }
+//     pthread_exit(0);
+// }
+ 
+// void *consumer(void *thread_n) {
+//     int thread_numb = *(int *)thread_n;
+//     buffer_t value;
+//     int i=0;
+//     while (i++ < PRODUCER_LOOPS) {
+//         semWait(es);  //sem_wait(&empty_sem);
+//         /* there could be race condition here, that could cause
+//            buffer underflow error */
+//         pthread_mutex_lock(&buffer_mutex);
+//         value = dequeuebuffer(value);
+//         pthread_mutex_unlock(&buffer_mutex);
+//         myPost(fs);  //sem_post(&full_sem);
+//         printf("Consumer %d dequeue %d from buffer\n", thread_numb, value);
+//    }
+//     pthread_exit(0);
+// }
  
 int main(int argc, int **argv) {
     buffer_index = 0;
@@ -251,17 +276,35 @@ int main(int argc, int **argv) {
 
     //Start clock
     clock_gettime(_POSIX_MONOTONIC_CLOCK, &start);
-    
+
+    shmid = shmget(0571, sizeof(buildingBlock)*30, IPC_CREAT | 0666);
+    globalBuffer = (buildingBlock*)shmat(shmid, NULL, 0);
+
+    shmid1 = shmget(0572, sizeof(countSem), IPC_CREAT | 0666);
+    full_sem = (countSem*)shmat(shmid1, NULL, 0);
+
+    shmid2 = shmget(0574, sizeof(int), IPC_CREAT | 0666);
+    totalJobs = (int*)shmat(shmid2, NULL, 0);
+
+    shmid3 = shmget(0575, sizeof(int), IPC_CREAT | 0666);
+    writePtr = (int*)shmat(shmid3, NULL, 0);
+
+    shmid4 = shmget(0576, sizeof(pthread_mutex_t), IPC_CREAT | 0666);
+    buffer_mutex = (pthread_mutex_t*)shmat(shmid4, NULL, 0);
+
+    shmid5 = shmget(0577, sizeof(int), IPC_CREAT | 0666);
+    totalJobs = (int*)shmat(shmid4, NULL, 0);
 
     int fullSemID = shmget(7999, 1024, 0666 | IPC_CREAT);
     int emptySemID = shmget(9999, 1024, 0666 | IPC_CREAT);
 
     fs = (countSem*)shmat(fullSemID, NULL, 0);
     es = (countSem*)shmat(emptySemID, NULL, 0);
+
  
     pthread_mutex_init(&buffer_mutex, NULL);
-    semInit(fs, SIZE);
-    semInit(es, 0);  //sem_init(&empty_sem
+    initSem(fs, SIZE);
+    initSem(es, 0);  //sem_init(&empty_sem
 
     pthread_t thread[NUMB_THREADS];
     int thread_numb[NUMB_THREADS];
